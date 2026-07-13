@@ -1,49 +1,47 @@
-name: Trigger auto deployment for containerappvnettest-toazuma
+name: Azure Static Web Apps CI/CD
 
-# When this action will be executed
 on:
-  # Automatically trigger it when detected changes in repo
   push:
-    branches: 
-      [ main ]
-    paths:
-    - '**'
-    - '.github/workflows/containerappvnettest-toazuma-AutoDeployTrigger-bb8f634e-9c72-47b4-a2b6-1cf1b297321b.yml'
-
-  # Allow manual trigger 
-  workflow_dispatch:      
+    branches:
+      - main
+      - dev
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches:
+      - main
 
 jobs:
-  build-and-deploy:
+  build_and_deploy_job:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
-    permissions: 
-      id-token: write #This is required for requesting the OIDC JWT Token
-      contents: read #Required when GH token is used to authenticate with private repo
-
+    name: Build and Deploy Job
     steps:
-      - name: Checkout to the branch
-        uses: actions/checkout@v2
-
-      - name: Azure Login
-        uses: azure/login@v2
+      - uses: actions/checkout@v2
         with:
-          client-id: ${{ secrets.CONTAINERAPPVNETTESTTOAZUMA_AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.CONTAINERAPPVNETTESTTOAZUMA_AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.CONTAINERAPPVNETTESTTOAZUMA_AZURE_SUBSCRIPTION_ID }}
-
-      - name: Build and push container image to registry
-        uses: azure/container-apps-deploy-action@v2
+          submodules: true
+          lfs: false
+      - name: Build And Deploy
+        id: builddeploy
+        uses: Azure/static-web-apps-deploy@v1
         with:
-          appSourcePath: ${{ github.workspace }}
-          _dockerfilePathKey_: _dockerfilePath_
-          _targetLabelKey_: _targetLabel_
-          registryUrl: 
-          registryUsername: ${{ secrets.CONTAINERAPPVNETTESTTOAZUMA_REGISTRY_USERNAME }}
-          registryPassword: ${{ secrets.CONTAINERAPPVNETTESTTOAZUMA_REGISTRY_PASSWORD }}
-          containerAppName: containerappvnettest-toazuma
-          resourceGroup: ContainerAppVNetTest-toazuma
-          imageToBuild: default/[parameters('containerAppName')]:${{ github.sha }}
-          _buildArgumentsKey_: |
-            _buildArgumentsValues_
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_THANKFUL_GLACIER_066A00210 }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }} # Used for Github integrations (i.e. PR comments)
+          action: "upload"
+          ###### Repository/Build Configurations - These values can be configured to match your app requirements. ######
+          # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
+          app_location: "/" # App source code path
+          output_location: "/" # Built app content directory - optional
+          production_branch: "main"
+          ###### End of Repository/Build Configurations ######
 
-
+  close_pull_request_job:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    name: Close Pull Request Job
+    steps:
+      - name: Close Pull Request
+        id: closepullrequest
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_THANKFUL_GLACIER_066A00210 }}
+          action: "close"
